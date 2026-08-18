@@ -1,0 +1,6 @@
+{
+  "name": "@anycol/reports",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts"
+}

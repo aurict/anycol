@@ -1,0 +1,86 @@
+name: quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.12" }
+      - run: bun install --frozen-lockfile
+      - run: bun audit --production
+      - run: bun run check
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+  e2e:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.12" }
+      - run: bun install --frozen-lockfile
+      - run: bun run build:web
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
+  migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          {
+            POSTGRES_DB: anycol,
+            POSTGRES_USER: anycol,
+            POSTGRES_PASSWORD: anycol,
+          }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U anycol -d anycol"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      DATABASE_URL: postgres://anycol:anycol@127.0.0.1:5432/anycol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.12" }
+      - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
+      - run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/verify-rls.sql
+  containers:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        service: [api, worker, web, admin]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.${{ matrix.service }}
+          load: true
+          tags: anycol-${{ matrix.service }}:ci
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: anycol-${{ matrix.service }}:ci
+          format: table
+          exit-code: "1"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true

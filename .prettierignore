@@ -1,0 +1,9 @@
+node_modules
+.next
+dist
+coverage
+playwright-report
+test-results
+tsconfig.tsbuildinfo
+bun.lock
+packages/db/migrations/meta/*.json

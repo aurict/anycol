@@ -1,0 +1,9 @@
+{
+  "name": "@anycol/connector-youtube",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anycol/connector-google-ads": "workspace:*"
+  },
+  "exports": "./src/index.ts"
+}

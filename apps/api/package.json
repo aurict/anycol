@@ -1,0 +1,10 @@
+{
+  "name": "@anycol/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "build": "bun build src/server.ts --target=node --outdir=dist --minify",
+    "start": "node dist/server.js"
+  }
+}

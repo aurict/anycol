@@ -1,0 +1,17 @@
+{$APP_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy web:3000
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+}
+
+{$API_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy api:4000
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+}
+
+{$ADMIN_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy admin:3001
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+}

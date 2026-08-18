@@ -1,0 +1,16 @@
+{
+  "name": "@anycol/web",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anycol/auth": "workspace:*",
+    "@anycol/contracts": "workspace:*",
+    "@anycol/observability": "workspace:*",
+    "jose": "^6.1.2"
+  },
+  "scripts": {
+    "dev": "next dev --port ${PORT:-3000}",
+    "build": "next build",
+    "start": "next start --port ${PORT:-3000}"
+  }
+}

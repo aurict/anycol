@@ -1,0 +1,103 @@
+name: anycol-production
+services:
+  api:
+    image: ${REGISTRY:?required}/anycol-api:${IMAGE_TAG:?required}
+    environment: &production-env
+      NODE_ENV: production
+      APP_VERSION: ${IMAGE_TAG}
+      API_PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:?required}
+      REDIS_URL: ${REDIS_URL:?required}
+      SESSION_SECRET: ${SESSION_SECRET:?required}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:?required}
+      INTERNAL_API_AUDIENCE: ${INTERNAL_API_AUDIENCE:-anycol-api}
+      PUBLIC_APP_URL: https://${APP_DOMAIN:-anycol.aurict.com}
+      ALLOWED_ORIGINS: https://${APP_DOMAIN:-anycol.aurict.com}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: https://${API_DOMAIN:-api.anycol.aurict.com}/v1/connections/oauth/callback
+      GOOGLE_ADS_DEVELOPER_TOKEN: ${GOOGLE_ADS_DEVELOPER_TOKEN:-}
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_REDIRECT_URI: https://${API_DOMAIN:-api.anycol.aurict.com}/v1/connections/oauth/callback
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
+      TIKTOK_REDIRECT_URI: https://${API_DOMAIN:-api.anycol.aurict.com}/v1/connections/oauth/callback
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?required}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [backend, edge]
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1G }
+  worker:
+    image: ${REGISTRY}/anycol-worker:${IMAGE_TAG}
+    environment:
+      <<: *production-env
+      WORKER_HEALTH_PORT: 4001
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [backend]
+    deploy:
+      resources:
+        limits: { cpus: "2.0", memory: 2G }
+  web:
+    image: ${REGISTRY}/anycol-web:${IMAGE_TAG}
+    environment:
+      NODE_ENV: production
+      APP_VERSION: ${IMAGE_TAG}
+      API_BASE_URL: http://api:4000
+      SESSION_SECRET: ${SESSION_SECRET}
+      INTERNAL_API_AUDIENCE: ${INTERNAL_API_AUDIENCE:-anycol-api}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:?required}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?required}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?required}
+      OIDC_REDIRECT_URI: https://${APP_DOMAIN:-anycol.aurict.com}/api/auth/callback
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/app/apps/web/.next/cache"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [edge]
+  admin:
+    image: ${REGISTRY}/anycol-admin:${IMAGE_TAG}
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: http://api:4000
+      SESSION_SECRET: ${SESSION_SECRET}
+      INTERNAL_API_AUDIENCE: ${INTERNAL_API_AUDIENCE:-anycol-api}
+      APP_VERSION: ${IMAGE_TAG}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/app/apps/admin/.next/cache"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    networks: [edge]
+  edge:
+    image: caddy:2.10.2-alpine
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-anycol.aurict.com}
+      API_DOMAIN: ${API_DOMAIN:-api.anycol.aurict.com}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.anycol.aurict.com}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    networks: [edge]
+networks:
+  backend: { internal: true }
+  edge: {}
+volumes:
+  caddy-data: {}
+  caddy-config: {}

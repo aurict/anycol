@@ -1,0 +1,15 @@
+{
+  "name": "@anycol/admin",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anycol/auth": "workspace:*",
+    "@anycol/contracts": "workspace:*",
+    "@anycol/observability": "workspace:*"
+  },
+  "scripts": {
+    "dev": "next dev --port ${PORT:-3001}",
+    "build": "next build",
+    "start": "next start --port ${PORT:-3001}"
+  }
+}

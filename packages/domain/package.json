@@ -1,0 +1,6 @@
+{
+  "name": "@anycol/domain",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts"
+}

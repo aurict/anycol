@@ -1,0 +1,10 @@
+{
+  "name": "@anycol/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/bootstrap.ts",
+    "build": "bun build src/bootstrap.ts --target=node --outdir=dist --minify",
+    "start": "node dist/bootstrap.js"
+  }
+}

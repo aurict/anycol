@@ -1,0 +1,6 @@
+{
+  "name": "@anycol/connector-google-ads",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts"
+}

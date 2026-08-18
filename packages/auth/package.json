@@ -1,0 +1,10 @@
+{
+  "name": "@anycol/auth",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anycol/contracts": "workspace:*",
+    "jose": "^6.1.2"
+  },
+  "exports": "./src/index.ts"
+}

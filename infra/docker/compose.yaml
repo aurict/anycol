@@ -1,0 +1,114 @@
+name: anycol
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: anycol
+      POSTGRES_USER: anycol
+      POSTGRES_PASSWORD: anycol
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anycol -d anycol"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  redis:
+    image: redis:8-alpine
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: anycol
+      MINIO_ROOT_PASSWORD: local-development-only
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
+  api:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      NODE_ENV: development
+      APP_VERSION: local
+      API_PORT: 4000
+      DATABASE_URL: postgres://anycol:anycol@postgres:5432/anycol
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-local-compose-session-secret-change-before-production}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-bG9jYWwtY29tcG9zZS1vbmx5LWtleS0zMmJ5dGVzISE=}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports: ["4000:4000"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+  worker:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.worker
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      NODE_ENV: development
+      APP_VERSION: local
+      DATABASE_URL: postgres://anycol:anycol@postgres:5432/anycol
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-local-compose-session-secret-change-before-production}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-bG9jYWwtY29tcG9zZS1vbmx5LWtleS0zMmJ5dGVzISE=}
+      WORKER_HEALTH_PORT: 4001
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp"]
+  web:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+    environment:
+      API_BASE_URL: http://api:4000
+    depends_on: [api]
+    ports: ["3000:3000"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/app/apps/web/.next/cache"]
+  admin:
+    profiles: ["app"]
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.admin
+    environment:
+      API_BASE_URL: http://api:4000
+      SESSION_SECRET: ${SESSION_SECRET:-local-compose-session-secret-change-before-production}
+    depends_on: [api]
+    ports: ["3001:3001"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ["/tmp", "/app/apps/admin/.next/cache"]
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
