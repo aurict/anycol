@@ -6,7 +6,7 @@ COPY packages packages
 RUN bun install --frozen-lockfile
 RUN bun run build:worker
 
-FROM gcr.io/distroless/nodejs24-debian12:nonroot
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:fbbdda866ea71aef98c4abece17e3d61fbf820cc2ef3961522caa2478716171a
 WORKDIR /app
 COPY --from=build /app/apps/worker/dist/bootstrap.js ./bootstrap.js
 ENV NODE_ENV=production

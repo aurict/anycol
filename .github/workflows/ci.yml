@@ -10,15 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.3.12" }
       - run: bun install --frozen-lockfile
       - run: bun audit --production
       - run: bun run check
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan Git history for secrets
+        run: >-
+          docker run --rm
+          --volume "$GITHUB_WORKSPACE:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
+          git --redact --verbose --no-banner /repo
       - uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -28,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.3.12" }
       - run: bun install --frozen-lockfile
@@ -53,7 +58,7 @@ jobs:
     env:
       DATABASE_URL: postgres://anycol:anycol@127.0.0.1:5432/anycol
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.3.12" }
       - run: bun install --frozen-lockfile
@@ -67,7 +72,7 @@ jobs:
       matrix:
         service: [api, worker, web, admin]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
@@ -77,7 +82,7 @@ jobs:
           tags: anycol-${{ matrix.service }}:ci
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
-      - uses: aquasecurity/trivy-action@0.33.1
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: anycol-${{ matrix.service }}:ci
           format: table
